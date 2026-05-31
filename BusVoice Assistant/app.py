@@ -16,7 +16,7 @@ from audio_utils import speech_to_text, text_to_speech
 st.set_page_config(page_title="BusVoice Assistant", layout="wide")
 st.title("🚌 Бортовой ассистент водителя автобуса")
 
-# ==================== ИНИЦИАЛИЗАЦИЯ ====================
+# Инициализация
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -27,7 +27,7 @@ if "user_input" not in st.session_state:
 if "last_audio_name" not in st.session_state:
     st.session_state.last_audio_name = None
 
-# ==================== БОКОВАЯ ПАНЕЛЬ ====================
+# Сайдбар
 
 with st.sidebar:
     st.header("🎛️ Элементы управления")
@@ -76,20 +76,20 @@ with st.sidebar:
     else:
         st.session_state.last_audio_name = None
 
-# ==================== ТЕКСТОВЫЙ ВВОД ====================
+# Ввод текста
 
 text_input = st.chat_input("Опишите неисправность...")
 if text_input:
     st.session_state.user_input = text_input
 
-# ==================== ОСНОВНАЯ ОБЛАСТЬ ====================
+# Основная часть
 
 # Показываем историю чата
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# ==================== ОБРАБОТКА СООБЩЕНИЯ ====================
+# Работа агентов
 
 if st.session_state.user_input:
     user_input = st.session_state.user_input
@@ -120,41 +120,6 @@ if st.session_state.user_input:
                 )
                 time.sleep(1)
 
-                # =============== ОТЛАДОЧНЫЙ ВЫВОД ===============
-                from ml_model import predict_severity
-                import joblib
-                
-                ml_severity = predict_severity(user_input)
-                model_info = "загружена из model.pkl" if os.path.exists("model.pkl") else "обучена заново"
-                
-                df_faults = pd.read_csv("data/faults.csv")
-                actual_samples = len(df_faults)
-
-                st.info(f"""
-                🧪 **ОТЛАДКА: Результат ML-модели**
-                - Входной текст: "{user_input}"
-                - Предсказанный класс: **{ml_severity.upper()}**
-                - Модель: LogisticRegression + TfidfVectorizer ({model_info})
-                - Размер обучающей выборки: {actual_samples} примеров (data/faults.csv)
-                - Классов: {df_faults['severity'].nunique()} ({', '.join(df_faults['severity'].value_counts().index.tolist())})
-                - Пайплайн: TF-IDF векторизация → классификация на 3 класса
-                """)
-                
-                with st.expander("🔍 Подробности работы пайплайна"):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.write("**Извлечённая информация:**")
-                        st.text(extracted)
-                        st.write("**Результат агента-механика:**")
-                        st.text(mechanic_result)
-                    with col2:
-                        st.write("**Результат агента-диспетчера:**")
-                        st.text(dispatcher_result)
-                        if ml_severity.lower() in mechanic_result.lower():
-                            st.success("✅ ML-модель используется: класс совпадает с результатом механика")
-                        else:
-                            st.warning("⚠️ Класс из ML-модели не найден в ответе механика")
-                # =============== КОНЕЦ ОТЛАДКИ ===============
 
                 # Шаг 4: Финальная рекомендация
                 final = recommend_chain.invoke({

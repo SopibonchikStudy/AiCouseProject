@@ -11,7 +11,7 @@ import io
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# ==================== ТОКЕН ====================
+# Получение токена
 
 def _get_salute_token() -> str:
     """Получает access_token для SaluteSpeech API."""
@@ -36,7 +36,7 @@ def _get_salute_token() -> str:
     else:
         raise Exception(f"Ошибка токена: {response.status_code}")
 
-# ==================== РАСПОЗНАВАНИЕ ====================
+# Распознавание
 
 def _convert_audio_to_wav_bytes(input_path: str) -> bytes:
     """Конвертирует аудио в WAV и возвращает байты."""
@@ -99,7 +99,7 @@ def speech_to_text(audio_file: str) -> str:
         print(f"SaluteSpeech распознавание: {e}, использую Google")
         return speech_to_text_google(audio_file)
 
-# ==================== СИНТЕЗ ====================
+# Синтез речи
 
 def clean_text_for_speech(text: str) -> str:
     """Очищает текст от форматирования."""
