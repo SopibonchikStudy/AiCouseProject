@@ -42,19 +42,20 @@ with st.sidebar:
         pd.read_csv(uploaded_schedule).to_csv("data/schedule.csv", index=False)
         st.success("Расписание загружено")
     
+    
     st.header("⚡ Быстрые сообщения")
     cols = st.columns(2)
     with cols[0]:
-        if st.button("🛑 Отказ тормозов", use_container_width=True):
+        if st.button("🛑 Отказ\nтормозов", use_container_width=True):
             st.session_state.user_input = "Отказали тормоза, педаль проваливается"
-        if st.button("💡 Фары", use_container_width=True):
+        if st.button("💡 Фары\n \u200b", use_container_width=True):
             st.session_state.user_input = "Не работают фары, на улице темнеет"
     with cols[1]:
-        if st.button("🌡️ Перегрев", use_container_width=True):
+        if st.button("🌡️ Перегрев\n двигателя", use_container_width=True):
             st.session_state.user_input = "Двигатель перегревается, температура растёт"
-        if st.button("🚪 Двери", use_container_width=True):
+        if st.button("🚪 Двери\n \u200b", use_container_width=True):
             st.session_state.user_input = "Заклинило заднюю дверь, не открывается"
-    
+
     st.header("🎤 Голосовой ввод")
     audio_file = st.file_uploader(
         "Загрузите аудиозапись (.wav)", 
