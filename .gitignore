@@ -1,0 +1,49 @@
+# Виртуальное окружение
+.venv/
+venv/
+env/
+
+# Файлы Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.egg
+dist/
+build/
+
+# FAISS индекс (будет создаваться при запуске)
+faiss_index/
+
+# Модель ML
+model.pkl
+
+# Чувствительные данные
+.env
+
+# Аудиофайлы
+*.mp3
+*.wav
+test_voice.wav
+
+# Временные файлы
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Папка data с загруженными файлами (если не хотите хранить тестовые данные)
+# data/schedule.csv
+# data/manual.txt
+# data/faults.csv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Логи
+*.log
+
+# Jupyter
+.ipynb_checkpoints/

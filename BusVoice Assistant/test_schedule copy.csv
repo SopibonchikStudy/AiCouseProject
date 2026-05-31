@@ -1,0 +1,2 @@
+route_id,route_name,departure_time,bus_id,driver,status
+999,Тестовый маршрут,10:00,TEST-01,Тестовый Водитель,на линии
