@@ -1,9 +1,12 @@
 streamlit
-langchain-core==0.3.28
-langchain-text-splitters==0.3.4
 langchain==0.3.13
+langchain-core==0.3.28
 langchain-community==0.3.13
+langchain-text-splitters==0.3.4
+langgraph==0.2.60
+langsmith==0.2.10
 langchain-gigachat==0.3.12
+gigachat==0.1.41.post1
 pandas
 scikit-learn
 joblib
@@ -11,4 +14,3 @@ SpeechRecognition
 pydub
 gTTS
 python-dotenv
-langgraph

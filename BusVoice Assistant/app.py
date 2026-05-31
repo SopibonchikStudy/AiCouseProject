@@ -10,7 +10,7 @@ import pandas as pd
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 load_dotenv()
 
-from agents import extract_chain, recommend_chain, mechanic_executor, dispatcher_executor
+from agents import extract_chain, recommend_chain, invoke_mechanic_agent, invoke_dispatcher_agent
 from audio_utils import speech_to_text, text_to_speech
 
 st.set_page_config(page_title="BusVoice Assistant", layout="wide")
@@ -23,6 +23,9 @@ if "messages" not in st.session_state:
 
 if "user_input" not in st.session_state:
     st.session_state.user_input = None
+
+if "last_audio_name" not in st.session_state:
+    st.session_state.last_audio_name = None
 
 # ==================== БОКОВАЯ ПАНЕЛЬ ====================
 
@@ -40,14 +43,17 @@ with st.sidebar:
         st.success("Расписание загружено")
     
     st.header("⚡ Быстрые сообщения")
-    if st.button("🛑 Отказ тормозов"):
-        st.session_state.user_input = "Отказали тормоза, педаль проваливается"
-    if st.button("🌡️ Перегрев"):
-        st.session_state.user_input = "Двигатель перегревается, температура растёт"
-    if st.button("💡 Фары"):
-        st.session_state.user_input = "Не работают фары, на улице темнеет"
-    if st.button("🚪 Двери"):
-        st.session_state.user_input = "Заклинило заднюю дверь, не открывается"
+    cols = st.columns(2)
+    with cols[0]:
+        if st.button("🛑 Отказ тормозов", use_container_width=True):
+            st.session_state.user_input = "Отказали тормоза, педаль проваливается"
+        if st.button("💡 Фары", use_container_width=True):
+            st.session_state.user_input = "Не работают фары, на улице темнеет"
+    with cols[1]:
+        if st.button("🌡️ Перегрев", use_container_width=True):
+            st.session_state.user_input = "Двигатель перегревается, температура растёт"
+        if st.button("🚪 Двери", use_container_width=True):
+            st.session_state.user_input = "Заклинило заднюю дверь, не открывается"
     
     st.header("🎤 Голосовой ввод")
     audio_file = st.file_uploader(
@@ -56,13 +62,19 @@ with st.sidebar:
         key="audio_uploader"
     )
     
-    # Обрабатываем аудио сразу при загрузке
+    # Обрабатываем аудио только если это новый файл
     if audio_file is not None:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-            tmp.write(audio_file.read())
-            recognized = speech_to_text(tmp.name)
-        st.info(f"🎤 Распознано: {recognized}")
-        st.session_state.user_input = recognized
+        current_name = audio_file.name
+        if current_name != st.session_state.last_audio_name:
+            st.session_state.last_audio_name = current_name
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+                tmp.write(audio_file.read())
+                recognized = speech_to_text(tmp.name)
+            st.info(f"🎤 Распознано: {recognized}")
+            st.session_state.user_input = recognized
+            st.rerun()
+    else:
+        st.session_state.last_audio_name = None
 
 # ==================== ТЕКСТОВЫЙ ВВОД ====================
 
@@ -96,28 +108,25 @@ if st.session_state.user_input:
                 extracted = extract_chain.invoke({"message": user_input})
                 time.sleep(1)
                 
-                # Шаг 2: Агент-Механик (настоящий агент!)
-                mechanic_result = mechanic_executor.invoke({
-                    "input": f"Классифицируй неисправность и найди инструкцию. Сообщение водителя: {user_input}. Извлечённая информация: {extracted}"
-                })["output"]
+                # Шаг 2: Агент-Механик
+                mechanic_result = invoke_mechanic_agent(
+                    f"Классифицируй неисправность и найди инструкцию. Сообщение водителя: {user_input}. Извлечённая информация: {extracted}"
+                )
                 time.sleep(2)
 
-                # Шаг 3: Агент-Диспетчер (настоящий агент!)
-                dispatcher_result = dispatcher_executor.invoke({
-                    "input": f"Найди свободные автобусы для замены. Выбери наиболее подходящий (тот же маршрут или ближайший по времени). Неисправность: {extracted}"
-                })["output"]
+                # Шаг 3: Агент-Диспетчер
+                dispatcher_result = invoke_dispatcher_agent(
+                    f"Найди свободные автобусы для замены. Неисправность: {extracted}"
+                )
                 time.sleep(1)
+
                 # =============== ОТЛАДОЧНЫЙ ВЫВОД ===============
-                # Прямой вызов ML-модели для демонстрации
                 from ml_model import predict_severity
-                ml_severity = predict_severity(user_input)
-                
-                # Загрузка модели для получения информации о ней
                 import joblib
-                import os
+                
+                ml_severity = predict_severity(user_input)
                 model_info = "загружена из model.pkl" if os.path.exists("model.pkl") else "обучена заново"
                 
-                # Показываем результат ML-модели
                 df_faults = pd.read_csv("data/faults.csv")
                 actual_samples = len(df_faults)
 
@@ -131,21 +140,22 @@ if st.session_state.user_input:
                 - Пайплайн: TF-IDF векторизация → классификация на 3 класса
                 """)
                 
-                # Показываем промежуточные результаты цепочек
                 with st.expander("🔍 Подробности работы пайплайна"):
-                    st.write("**Извлечённая информация:**")
-                    st.text(extracted)
-                    st.write("**Результат агента-механика:**")
-                    st.text(mechanic_result)
-                    st.write("**Результат агента-диспетчера:**")
-                    st.text(dispatcher_result)
-                    
-                    # Проверяем, что ML-модель реально используется
-                    if ml_severity.lower() in mechanic_result.lower():
-                        st.success("✅ ML-модель действительно используется: класс из модели совпадает с результатом механика")
-                    else:
-                        st.warning("⚠️ Класс из ML-модели не найден в ответе механика")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.write("**Извлечённая информация:**")
+                        st.text(extracted)
+                        st.write("**Результат агента-механика:**")
+                        st.text(mechanic_result)
+                    with col2:
+                        st.write("**Результат агента-диспетчера:**")
+                        st.text(dispatcher_result)
+                        if ml_severity.lower() in mechanic_result.lower():
+                            st.success("✅ ML-модель используется: класс совпадает с результатом механика")
+                        else:
+                            st.warning("⚠️ Класс из ML-модели не найден в ответе механика")
                 # =============== КОНЕЦ ОТЛАДКИ ===============
+
                 # Шаг 4: Финальная рекомендация
                 final = recommend_chain.invoke({
                     "user_message": user_input,
