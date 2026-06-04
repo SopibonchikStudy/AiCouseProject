@@ -16,6 +16,15 @@ from audio_utils import speech_to_text, text_to_speech
 st.set_page_config(page_title="BusVoice Assistant", layout="wide")
 st.title("🚌 Бортовой ассистент водителя автобуса")
 
+
+def get_chat_history(max_messages=6):
+    """Собирает последние сообщения из истории для контекста."""
+    history = ""
+    recent_messages = st.session_state.messages[-max_messages:]
+    for msg in recent_messages:
+        role = "Водитель" if msg["role"] == "user" else "Ассистент"
+        history += f"{role}: {msg['content']}\n"
+    return history.strip()
 # Инициализация
 
 if "messages" not in st.session_state:
@@ -26,6 +35,8 @@ if "user_input" not in st.session_state:
 
 if "last_audio_name" not in st.session_state:
     st.session_state.last_audio_name = None
+
+
 
 # Сайдбар
 
@@ -106,12 +117,19 @@ if st.session_state.user_input:
         with st.spinner("Анализирую..."):
             try:
                 # Шаг 1: Извлечение симптомов
-                extracted = extract_chain.invoke({"message": user_input})
+                chat_history = get_chat_history()
+                extracted = extract_chain.invoke({
+                    "history": chat_history,
+                    "message": user_input
+                })
                 time.sleep(1)
                 
                 # Шаг 2: Агент-Механик
                 mechanic_result = invoke_mechanic_agent(
-                    f"Классифицируй неисправность и найди инструкцию. Сообщение водителя: {user_input}. Извлечённая информация: {extracted}"
+                    f"История диалога:\n{chat_history}\n\n"
+                    f"Текущее сообщение водителя: {user_input}\n"
+                    f"Извлечённая информация: {extracted}\n\n"
+                    f"Учти контекст диалога. Если водитель спрашивает 'а что насчёт X' — он имеет в виду неисправность X."
                 )
                 time.sleep(2)
 
@@ -124,12 +142,12 @@ if st.session_state.user_input:
 
                 # Шаг 4: Финальная рекомендация
                 final = recommend_chain.invoke({
+                    "history": chat_history,
                     "user_message": user_input,
                     "extracted_info": extracted,
                     "mechanic_result": mechanic_result,
                     "dispatcher_result": dispatcher_result
                 })
-                
                 st.markdown(final)
                 
                 # Озвучка
